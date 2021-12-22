@@ -52,7 +52,7 @@
  *	build variant above, we currently require users wanting to build for the
  *	KL03 to manually set this here.
  */
-#define		WARP_BUILD_ENABLE_FRDMKL03			0
+#define		WARP_BUILD_ENABLE_FRDMKL03			1
 
 /*
  *	Force the required configuration if WARP_BUILD_ENABLE_GLAUX_VARIANT is set
@@ -75,6 +75,7 @@
 	#define		WARP_BUILD_ENABLE_DEVLPS25H		0
 	#define		WARP_BUILD_ENABLE_DEVMAG3110		0
 	#define		WARP_BUILD_ENABLE_DEVMMA8451Q		0
+        #define         WARP_BUILD_ENABLE_DEVINA219             1
 	#define		WARP_BUILD_ENABLE_DEVRV8803C7		1
 	#define		WARP_BUILD_ENABLE_DEVSI4705		0
 	#define		WARP_BUILD_ENABLE_DEVSI7021		0
@@ -96,11 +97,13 @@
 	#define		WARP_BUILD_ENABLE_DEVL3GD20H		0
 	#define		WARP_BUILD_ENABLE_DEVLPS25H		0
 	#define		WARP_BUILD_ENABLE_DEVMAG3110		0
-	#define		WARP_BUILD_ENABLE_DEVMMA8451Q		1
+	#define		WARP_BUILD_ENABLE_DEVMMA8451Q		0
+	#define         WARP_BUILD_ENABLE_DEVINA219             1
 	#define		WARP_BUILD_ENABLE_DEVRV8803C7		0
 	#define		WARP_BUILD_ENABLE_DEVSI4705		0
 	#define		WARP_BUILD_ENABLE_DEVSI7021		0
 	#define		WARP_BUILD_ENABLE_DEVTCS34725		0
+	#define		WARP_BUILD_ENABLE_DEVSSD1331		1
 #else
 	/*
 	 *	Otherwise: Edit these to set which code paths are activated in the firmware compilation
