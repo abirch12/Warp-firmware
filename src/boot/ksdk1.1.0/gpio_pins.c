@@ -32,12 +32,6 @@ gpio_output_pin_user_config_t	outputPins[] = {
 	 *	Set unused pins as outputs
 	 */
 	#if (!WARP_BUILD_ENABLE_GLAUX_VARIANT)
-		{
-			.pinName = kWarpPinBGX_nRST,
-			.config.outputLogic = 1,
-			.config.slewRate = kPortSlowSlewRate,
-			.config.driveStrength = kPortLowDriveStrength,
-		},
 		/*	We only use these as SPI, despite being connected to RTS/CTS on revC
 		{
 			.pinName = kWarpPinSPI_MISO_UART_RTS,
@@ -181,6 +175,9 @@ gpio_output_pin_user_config_t	outputPins[] = {
  *	NOTE: The semantics is that pins that are excluded are disabled (TODO: double check).
  */
 gpio_input_pin_user_config_t	inputPins[] = {
+	{
+		.pinName = kWarpPinMAXREFDES117_INT,
+	},
 	{
 		.pinName = GPIO_PINS_OUT_OF_RANGE,
 	}

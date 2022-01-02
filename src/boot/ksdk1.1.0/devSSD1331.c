@@ -156,28 +156,173 @@ devSSD1331init(void)
 //	SEGGER_RTT_WriteString(0, "\r\n\tDone with screen clear...\n");
 
 
+/*	Add text as headings for measurements	*/
+	uint16_t col = 8;    //start point
+	uint16_t row = 9;
+	int i;
 
-	/*
-	 *	Read the manual for the SSD1331 (SSD1331_1.2.pdf) to figure
-	 *	out how to fill the entire screen with the brightest shade
-	 *	of green.
-	 */
-
-	writeCommand(kSSD1331CommandDRAWRECT);
-        writeCommand(0x00); //start
-        writeCommand(0x00);
-        writeCommand(0x5F); //end
-        writeCommand(0x3F);
-	writeCommand(0x00); //line colour
-        writeCommand(0x3F);
-	writeCommand(0x00);
-        writeCommand(0x00); //fill colour
-        writeCommand(0x3F);
-        writeCommand(0x00);
-
-//	SEGGER_RTT_WriteString(0, "\r\n\tDone with draw rectangle...\n");
-
-
+	char spo2_text[] = "Sp02 - ";
+	for (i=0;i<7;i++){
+		drawChar(col,row,(char)spo2_text[i]);
+		col += 8;
+	}
+	
+	col = 24;    //HR line
+	row = 29;
+	char hr_text[] = "HR - ";
+	for (i=0;i<5;i++){
+		drawChar(col,row,(char)hr_text[i]);
+		col += 8;
+	}
 
 	return 0;
+}
+
+void 
+drawLine (uint16_t x, uint16_t y, uint16_t scol, uint16_t srow, uint16_t ecol, uint16_t erow){
+	writeCommand(kSSD1331CommandDRAWLINE);
+	writeCommand(x+scol);	//start point
+	writeCommand(y+srow);
+	writeCommand(x+ecol);	//end point
+	writeCommand(y+erow);
+	writeCommand(0x00);	//colour
+        writeCommand(0x00);
+        writeCommand(0x28);
+}
+
+void
+drawChar (uint16_t col, uint16_t row, char c){
+	switch (c){		//Only 0-9, S, p, H, R, - and space are available characters
+		case 'S':
+			drawLine(col,row,1,0,5,0);
+			drawLine(col,row,7,2,5,0);
+			drawLine(col,row,0,1,0,4);
+			drawLine(col,row,0,4,7,5);
+			drawLine(col,row,7,5,7,8);
+			drawLine(col,row,6,9,2,7);
+			break;
+		case 'p':
+			drawLine(col,row,2,3,2,9);
+			drawLine(col,row,2,3,5,3);
+			drawLine(col,row,2,6,5,6);
+			drawLine(col,row,6,4,6,5);
+			break;
+		case 'H':
+			drawLine(col,row,0,0,0,9);
+			drawLine(col,row,7,0,7,9);
+			drawLine(col,row,0,5,7,5);
+			break;
+		case 'R':
+			drawLine(col,row,1,0,1,9);
+			drawLine(col,row,1,0,6,0);
+			drawLine(col,row,1,5,6,5);
+			drawLine(col,row,7,1,7,4);
+			drawLine(col,row,3,5,7,9);
+			break;
+		case ' ':
+			break;
+		case '-':
+			drawLine(col,row,1,5,6,5);
+			break;
+		case '0':
+			drawLine(col,row,1,1,1,8);
+			drawLine(col,row,6,1,6,8);
+			drawLine(col,row,2,0,5,0);
+			drawLine(col,row,2,9,5,9);
+			break;
+		case '1':
+			drawLine(col,row,3,0,3,9);
+			break;
+		case '2':
+			drawLine(col,row,1,0,5,0);
+			drawLine(col,row,6,1,6,3);
+			drawLine(col,row,5,4,2,4);
+			drawLine(col,row,1,5,1,8);
+			drawLine(col,row,2,9,6,9);
+			break;
+		case '3':
+			drawLine(col,row,1,0,5,0);
+			drawLine(col,row,6,1,6,8);
+			drawLine(col,row,1,4,6,4);
+			drawLine(col,row,1,9,5,9);
+			break;
+		case '4':
+			drawLine(col,row,1,0,1,4);
+			drawLine(col,row,6,0,6,9);
+			drawLine(col,row,1,4,6,4);
+			break;
+		case '5':
+			drawLine(col,row,2,0,6,0);
+			drawLine(col,row,1,1,1,3);
+			drawLine(col,row,2,4,5,4);
+			drawLine(col,row,6,5,6,8);
+			drawLine(col,row,1,9,5,9);
+			break;
+		case '6':
+			drawLine(col,row,2,0,5,0);
+			drawLine(col,row,1,1,1,8);
+			drawLine(col,row,1,4,5,4);
+			drawLine(col,row,6,5,6,8);
+			drawLine(col,row,2,9,5,9);
+			break;
+		case '7':
+			drawLine(col,row,1,0,6,0);
+			drawLine(col,row,6,0,6,9);
+			break;
+		case '8':
+			drawLine(col,row,2,0,5,0);
+			drawLine(col,row,1,1,1,8);
+			drawLine(col,row,6,1,6,8);
+			drawLine(col,row,1,4,6,4);
+			drawLine(col,row,2,9,5,9);
+			break;
+		case '9':
+			drawLine(col,row,2,0,5,0);
+			drawLine(col,row,1,1,1,3);
+			drawLine(col,row,2,4,6,4);
+			drawLine(col,row,6,1,6,9);
+			break;
+	}
+}
+
+void 
+newReading(int32_t spo2, int32_t heart_rate){
+	uint16_t col = 64;
+	uint16_t row = 9;
+	int32_t hundred, ten, unit;
+
+	writeCommand(kSSD1331CommandCLEAR);	//clear to the right of headings
+	writeCommand(0x40);
+	writeCommand(0x00);
+	writeCommand(0x5F);
+	writeCommand(0x3F);
+
+	if (spo2 > 99){
+		drawChar(col,row,'1');
+		col += 8;
+		drawChar(col,row,'0');
+		col += 8;
+		drawChar(col,row,'0');
+	}
+	else{
+		ten = spo2/10;			//finding digits of value
+		unit= spo2 - (10*ten);
+		drawChar(col,row,(char)(ten+'0'));
+		col += 8;
+		drawChar(col,row,(char)(unit+'0'));
+	}
+
+	col = 64;
+	row = 29;
+	hundred = 0;
+	if (heart_rate > 99){
+		hundred = 1;
+		drawChar(col,row,(char)(hundred+'0'));
+		col += 8;
+	}
+	ten = (heart_rate-(100*hundred))/10;
+	unit= heart_rate - ((100*hundred) + (10*ten));
+	drawChar(col,row,(char)(ten+'0'));
+	col += 8;
+	drawChar(col,row,(char)(unit+'0'));
 }

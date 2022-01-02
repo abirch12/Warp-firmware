@@ -20,30 +20,10 @@ warp:
 	cp src/boot/ksdk1.1.0/config.h					build/ksdk1.1/work/boards/Warp
 	cp src/boot/ksdk1.1.0/glaux.h					build/ksdk1.1/work/boards/Warp
 	cp src/boot/ksdk1.1.0/CMakeLists-Warp.txt			build/ksdk1.1/work/demos/Warp/armgcc/Warp/CMakeLists.txt
-	cp src/boot/ksdk1.1.0/devBMX055.*				build/ksdk1.1/work/demos/Warp/src/
-	cp src/boot/ksdk1.1.0/devADXL362.*				build/ksdk1.1/work/demos/Warp/src/
-	cp src/boot/ksdk1.1.0/devMMA8451Q.*				build/ksdk1.1/work/demos/Warp/src/
-	cp src/boot/ksdk1.1.0/devLPS25H.*				build/ksdk1.1/work/demos/Warp/src/
-	cp src/boot/ksdk1.1.0/devHDC1000.*				build/ksdk1.1/work/demos/Warp/src/
-	cp src/boot/ksdk1.1.0/devMAG3110.*				build/ksdk1.1/work/demos/Warp/src/
-	cp src/boot/ksdk1.1.0/devSI7021.*				build/ksdk1.1/work/demos/Warp/src/
-	cp src/boot/ksdk1.1.0/devL3GD20H.*				build/ksdk1.1/work/demos/Warp/src/
-	cp src/boot/ksdk1.1.0/devBME680.*				build/ksdk1.1/work/demos/Warp/src/
-	cp src/boot/ksdk1.1.0/devTCS34725.*				build/ksdk1.1/work/demos/Warp/src/
-	cp src/boot/ksdk1.1.0/devSI4705.*				build/ksdk1.1/work/demos/Warp/src/
-	cp src/boot/ksdk1.1.0/devCCS811.*				build/ksdk1.1/work/demos/Warp/src/
-	cp src/boot/ksdk1.1.0/devAMG8834.*				build/ksdk1.1/work/demos/Warp/src/
-	cp src/boot/ksdk1.1.0/devAS7262.*				build/ksdk1.1/work/demos/Warp/src/
-	cp src/boot/ksdk1.1.0/devAS7263.*				build/ksdk1.1/work/demos/Warp/src/
-	cp src/boot/ksdk1.1.0/devAS726x.*				build/ksdk1.1/work/demos/Warp/src/
 	cp src/boot/ksdk1.1.0/devRV8803C7.*				build/ksdk1.1/work/demos/Warp/src/
-	cp src/boot/ksdk1.1.0/devBGX.*					build/ksdk1.1/work/demos/Warp/src/
-	cp src/boot/ksdk1.1.0/devISL23415.*				build/ksdk1.1/work/demos/Warp/src/
-	cp src/boot/ksdk1.1.0/devIS25xP.*				build/ksdk1.1/work/demos/Warp/src/
-	cp src/boot/ksdk1.1.0/devAT45DB.*				build/ksdk1.1/work/demos/Warp/src/
-	cp src/boot/ksdk1.1.0/devICE40.*				build/ksdk1.1/work/demos/Warp/src/
 	cp src/boot/ksdk1.1.0/devSSD1331.*                              build/ksdk1.1/work/demos/Warp/src/
-	cp src/boot/ksdk1.1.0/devINA219.*				build/ksdk1.1/work/demos/Warp/src/
+	cp src/boot/ksdk1.1.0/devMAXREFDES117.*				build/ksdk1.1/work/demos/Warp/src/
+	cp src/boot/ksdk1.1.0/algorithm.*                               build/ksdk1.1/work/demos/Warp/src/
 	cd build/ksdk1.1/work/lib/ksdk_platform_lib/armgcc/KL03Z4 && ./clean.sh; ./build_release.sh
 	cd build/ksdk1.1/work/demos/Warp/armgcc/Warp && ./clean.sh; ./build_release.sh
 	@echo "\n\nNow, run\n\n\tmake load-warp\n\n"
