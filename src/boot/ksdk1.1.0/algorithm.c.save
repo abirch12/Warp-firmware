@@ -1,0 +1,357 @@
+/** \file algorithm.cpp ******************************************************
+*
+* Project: MAXREFDES117#
+* Filename: algorithm.cpp
+* Description: This module calculates the heart rate/SpO2 level*/
+/*******************************************************************************
+* Copyright (C) 2016 Maxim Integrated Products, Inc., All Rights Reserved.
+*
+* Permission is hereby granted, free of charge, to any person obtaining a
+* copy of this software and associated documentation files (the "Software"),
+* to deal in the Software without restriction, including without limitation
+* the rights to use, copy, modify, merge, publish, distribute, sublicense,
+* and/or sell copies of the Software, and to permit persons to whom the
+* Software is furnished to do so, subject to the following conditions:
+*
+* The above copyright notice and this permission notice shall be included
+* in all copies or substantial portions of the Software.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+* OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+* IN NO EVENT SHALL MAXIM INTEGRATED BE LIABLE FOR ANY CLAIM, DAMAGES
+* OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+* ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+* OTHER DEALINGS IN THE SOFTWARE.
+*
+* Except as contained in this notice, the name of Maxim Integrated
+* Products, Inc. shall not be used except as stated in the Maxim Integrated
+* Products, Inc. Branding Policy.
+*
+* The mere transfer of this software does not imply any licenses
+* of trade secrets, proprietary technology, copyrights, patents,
+* trademarks, maskwork rights, or any other form of intellectual
+* property whatsoever. Maxim Integrated Products, Inc. retains all
+* ownership rights.
+*******************************************************************************
+*/
+#include <stdlib.h>
+
+#include "config.h"
+
+#include "fsl_misc_utilities.h"
+#include "fsl_device_registers.h"
+#include "fsl_i2c_master_driver.h"
+#include "fsl_spi_master_driver.h"
+#include "fsl_rtc_driver.h"
+#include "fsl_clock_manager.h"
+#include "fsl_power_manager.h"
+#include "fsl_mcglite_hal.h"
+#include "fsl_port_hal.h"
+
+#include "errstrs.h"
+#include "gpio_pins.h"
+#include "SEGGER_RTT.h"
+#include "warp.h"
+#include "algorithm.h"
+
+void maxim_heart_rate_and_oxygen_saturation(uint16_t *ir_buffer,  int32_t ir_buffer_length, uint16_t *red_buffer, int32_t *spo2, int8_t *spo2_valid, 
+                              int32_t *heart_rate, int8_t  *hr_valid)
+/**
+* \brief        Calculate the heart rate and SpO2 level
+* \par          Details
+*               By detecting  peaks of PPG cycle and corresponding AC/DC of red/infra-red signal, the ratio for the SPO2 is computed.
+*               Since this algorithm is aiming for Arm M0/M3. formaula for SPO2 did not achieve the accuracy due to register overflow.
+*               Thus, accurate SPO2 is precalculated and save longo uch_spo2_table[] per each ratio.
+*
+* \param[in]    *pun_ir_buffer           - IR sensor data buffer
+* \param[in]    n_ir_buffer_length      - IR sensor data buffer length
+* \param[in]    *pun_red_buffer          - Red sensor data buffer
+* \param[out]    *pn_spo2                - Calculated SpO2 value
+* \param[out]    *pch_spo2_valid         - 1 if the calculated SpO2 value is valid
+* \param[out]    *pn_heart_rate          - Calculated heart rate value
+* \param[out]    *pch_hr_valid           - 1 if the calculated heart rate value is valid
+*
+* \retval       None
+*/
+{
+    uint32_t ir_mean ,only_once ;
+    int32_t k ,i_ratio_count;
+    int32_t i, s, m, exact_ir_valley_locs_count ,middle_idx;
+    int32_t th1, npks,c_min;      
+    int32_t ir_valley_locs[15] ;
+    int32_t exact_ir_valley_locs[15] ;
+    int32_t dx_peak_locs[15] ;
+    int32_t peak_interval_sum;
+    
+    int32_t y_ac, x_ac;
+    int32_t spo2_calc; 
+    int32_t y_dc_max, x_dc_max; 
+    int32_t y_dc_max_idx, x_dc_max_idx; 
+    int32_t ratio[5],ratio_average; 
+    int32_t nume,  denom ;
+
+    //int32_t dx[ BUFFER_SIZE-MA4_SIZE]; // delta
+    //int32_t x[ BUFFER_SIZE]; //ir
+    //int32_t y[ BUFFER_SIZE]; //red
+
+    //warpPrint("Start calculating\n");
+    // remove DC of ir signal and put in x    
+    ir_mean = 0; 
+    for (k=0 ; k<ir_buffer_length ; k++ ) ir_mean += ir_buffer[k] ;
+    ir_mean =ir_mean/ir_buffer_length ;
+    
+    for (k=0 ; k<ir_buffer_length ; k++ )  {
+	x[k] = -1*(ir_buffer[k] - ir_mean) ;
+	//warpPrint("X: %d\n",x[k]); 
+    }
+    // 4 pt Moving Average of IR
+    /*for(k=0; k< BUFFER_SIZE-MA4_SIZE; k++){
+        denom= ( x[k]+ x[k+1]);// x[k+2]+ x[k+3]);
+        x[k]=  denom/(int32_t)2; 
+	warpPrint("MA: %d\n",x[k]);
+    }
+    warpPrint("4pt MA\n");*/
+    // get difference of smoothed IR signal
+    
+    /*for( k=0; k<BUFFER_SIZE-MA4_SIZE-1;  k++)
+        dx[k]= (x[k+1]- x[k]);
+
+    // 2-pt Moving Average to an_dx
+    for(k=0; k< BUFFER_SIZE-MA4_SIZE-2; k++){
+        dx[k] =  ( dx[k]+ dx[k+1])/2 ;
+    }
+    
+    // hamming window
+    // flip wave form so that we can detect valley with peak detector
+    for ( i=0 ; i<BUFFER_SIZE-HAMMING_SIZE-MA4_SIZE-2 ;i++){
+        s= 0;
+        for( k=i; k<i+ HAMMING_SIZE ;k++){
+            s -= dx[k] *hamm[k-i] ; 
+                     }
+        dx[i]= s/ (int32_t)1146; // divide by sum of auw_hamm 
+    }
+
+    warpPrint("Hamming dx");
+    th1=0; // threshold calculation
+    for ( k=0 ; k<BUFFER_SIZE-HAMMING_SIZE ;k++){
+        th1 += ((dx[k]>0)? dx[k] : ((int32_t)0-dx[k])) ;
+    }
+    th1= th1/ ( BUFFER_SIZE-HAMMING_SIZE);*/
+
+    th1=0;
+    for (k=0; k<BUFFER_SIZE; k++){
+    	th1+=((x[k]>0)? x[k] : ((int32_t)0-x[k])) ;
+	//warpPrint("%d\n",th1);
+    }
+    th1=th1/(BUFFER_SIZE);
+    //warpPrint("%d\n",th1);
+    if( th1<30) th1=30; // min allowed
+    if( th1>60) th1=60; // max allowed
+
+    for ( k=0 ; k<15;k++) ir_valley_locs[k]=0;
+    // peak location is actually index for sharpest location of raw signal since we flipped the signal         
+    maxim_find_peaks( ir_valley_locs, &npks, x, BUFFER_SIZE, th1, 4, 10 );//peak_height, peak_distance, max_num_peaks 
+    //warpPrint("Found peaks\n");
+    peak_interval_sum =0;
+    if (npks>=2){
+        for (k=1; k<npks; k++)
+            peak_interval_sum += (ir_valley_locs[k]-ir_valley_locs[k -1]);
+        peak_interval_sum=peak_interval_sum/(npks-1);
+        *heart_rate=(int32_t)((FS*60)/peak_interval_sum);// beats per minutes
+        *hr_valid  = 1;
+    }
+    else  {
+        *heart_rate = -999;
+        *hr_valid  = 0;
+    }
+    warpPrint("Heart rate found");        
+    
+    // raw value : RED(=y) and IR(=X)
+    // we need to assess DC and AC value of ir and red PPG. 
+    for (k=0 ; k<ir_buffer_length ; k++ )  {
+        x[k] =  ir_buffer[k] ; 
+        y[k] =  red_buffer[k] ; 
+    }
+
+    // find precise min near an_ir_valley_locs
+    exact_ir_valley_locs_count =npks;
+
+    //using an_exact_ir_valley_locs , find ir-red DC and ir-red AC for SPO2 calibration ratio
+    //finding AC/DC maximum of raw ir * red between two valley locations
+    ratio_average =0; 
+    i_ratio_count =0; 
+    for(k=0; k< 5; k++) ratio[k]=0;
+	
+    //warpPrint("spo2 initialised\n");
+    for (k=0; k< exact_ir_valley_locs_count; k++){
+        if (exact_ir_valley_locs[k] > BUFFER_SIZE ){             
+            *spo2 =  -999 ; // do not use SPO2 since valley loc is out of range
+            *spo2_valid  = 0; 
+            return;
+        }
+    }
+    // find max between two valley locations 
+    // and use ratio betwen AC compoent of Ir & Red and DC compoent of Ir & Red for SPO2 
+
+    for (k=0; k< exact_ir_valley_locs_count-1; k++){
+        y_dc_max= -16777216 ; 
+        x_dc_max= - 16777216; 
+        if (exact_ir_valley_locs[k+1]- exact_ir_valley_locs[k] >3){
+            for (i= exact_ir_valley_locs[k]; i< exact_ir_valley_locs[k+1]; i++){
+                if (x[i]> x_dc_max) {x_dc_max =x[i]; x_dc_max_idx=i;}
+                if (y[i]> y_dc_max) {y_dc_max =y[i]; y_dc_max_idx=i;}
+            }
+            y_ac= (y[exact_ir_valley_locs[k+1]] - y[exact_ir_valley_locs[k] ] )*(y_dc_max_idx - exact_ir_valley_locs[k]); //red finding average DC here
+            y_ac=  y[exact_ir_valley_locs[k]] + y_ac/ (exact_ir_valley_locs[k+1] - exact_ir_valley_locs[k])  ; 
+            y_ac=  y[y_dc_max_idx] - y_ac;    // subracting linear DC compoenents from raw 
+
+            x_ac= (x[exact_ir_valley_locs[k+1]] - x[exact_ir_valley_locs[k] ] )*(x_dc_max_idx -exact_ir_valley_locs[k]); // ir
+            x_ac=  x[exact_ir_valley_locs[k]] + x_ac/ (exact_ir_valley_locs[k+1] - exact_ir_valley_locs[k]); 
+            x_ac=  x[y_dc_max_idx] - x_ac;      // subracting linear DC compoenents from raw 
+
+            nume=( y_ac *x_dc_max)>>7 ; //prepare X100 to preserve floating value
+            denom= ( x_ac *y_dc_max)>>7;
+            if (denom>0  && i_ratio_count <5 &&  nume != 0)
+            {   
+                ratio[i_ratio_count]= (nume*100)/denom ; //formula is ( y_ac *x_dc_max) / ( x_ac *y_dc_max) ;
+                i_ratio_count++;
+            }
+        }
+    }
+    //warpPrint("ratios found\n");
+    maxim_sort_ascend(ratio, i_ratio_count);
+    middle_idx= i_ratio_count/2;
+
+    if (middle_idx >1)
+        ratio_average =( ratio[middle_idx-1] +ratio[middle_idx])/2; // use median
+    else
+        ratio_average = ratio[middle_idx ];
+
+    if( ratio_average>2 && ratio_average <184){
+        spo2_calc= spo2_table[ratio_average] ;
+        *spo2 = spo2_calc ;
+        *spo2_valid  = 1;//  float_SPO2 =  -45.060*n_ratio_average* n_ratio_average/10000 + 30.354 *n_ratio_average/100 + 94.845 ;  // for comparison with table
+    }
+    else{
+        *spo2 =  -999 ; // do not use SPO2 since signal ratio is out of range
+        *spo2_valid  = 0; 
+    }
+    warpPrint("found spo2\n");
+}
+
+
+void maxim_find_peaks(int32_t *locs, int32_t *npks, int32_t *x, int32_t size, int32_t min_height, int32_t min_distance, int32_t max_num)
+/**
+* \brief        Find peaks
+* \par          Details
+*               Find at most MAX_NUM peaks above MIN_HEIGHT separated by at least MIN_DISTANCE
+*
+* \retval       None
+*/
+{
+    warpPrint("In maxim_find_peaks\n");
+    maxim_peaks_above_min_height( locs, npks, x, size, min_height );
+    maxim_remove_close_peaks( locs, npks, x, min_distance );
+    *npks = min( *npks, max_num );
+}
+
+void maxim_peaks_above_min_height(int32_t *locs, int32_t *npks, int32_t  *x, int32_t size, int32_t min_height)
+/**
+* \brief        Find peaks above n_min_height
+* \par          Details
+*               Find all peaks above MIN_HEIGHT
+*
+* \retval       None
+*/
+{
+    int32_t i = 1, width;
+    *npks = 0;
+    
+    while (i < size-1){
+        if (x[i] > min_height && x[i] > x[i-1]){            // find left edge of potential peaks
+            width = 1;
+            while (i+width < size && x[i] == x[i+width])    // find flat peaks
+                width++;
+            if (x[i] > x[i+width] && (*npks) < 15 ){                            // find right edge of peaks
+                locs[(*npks)++] = i;        
+                // for flat peaks, peak location is left edge
+                i += width+1;
+            }
+            else
+                i += width;
+        }
+        else
+            i++;
+    }
+}
+
+
+void maxim_remove_close_peaks(int32_t *locs, int32_t *npks, int32_t *x, int32_t min_distance)
+/**
+* \brief        Remove peaks
+* \par          Details
+*               Remove peaks separated by less than MIN_DISTANCE
+*
+* \retval       None
+*/
+{
+    
+    int32_t i, j, old_npks, dist;
+    
+    /* Order peaks from large to small */
+    maxim_sort_indices_descend( x, locs, *npks );
+
+    for ( i = -1; i < *npks; i++ ){
+        old_npks = *npks;
+        *npks = i+1;
+        for ( j = i+1; j < old_npks; j++ ){
+            dist =  locs[j] - ( i == -1 ? -1 : locs[i] ); // lag-zero peak of autocorr is at index -1
+            if ( dist > min_distance || dist < -min_distance )
+                locs[(*npks)++] = locs[j];
+        }
+    }
+
+    // Resort indices longo ascending order
+    maxim_sort_ascend( locs, *npks );
+}
+
+void maxim_sort_ascend(int32_t *x,int32_t size) 
+/**
+* \brief        Sort array
+* \par          Details
+*               Sort array in ascending order (insertion sort algorithm)
+*
+* \retval       None
+*/
+{
+    int32_t i, j, temp;
+    for (i = 1; i < size; i++) {
+        temp = x[i];
+        for (j = i; j > 0 && temp < x[j-1]; j--)
+            x[j] = x[j-1];
+        x[j] = temp;
+    }
+}
+
+void maxim_sort_indices_descend(int32_t *x, int32_t *indx, int32_t size)
+/**
+* \brief        Sort indices
+* \par          Details
+*               Sort indices according to descending order (insertion sort algorithm)
+*
+* \retval       None
+*/ 
+{
+    int32_t i, j, temp;
+    for (i = 1; i < size; i++) {
+        temp = indx[i];
+        for (j = i; j > 0 && x[temp] > x[indx[j-1]]; j--)
+            indx[j] = indx[j-1];
+        indx[j] = temp;
+    }
+}
+
+
+
+
