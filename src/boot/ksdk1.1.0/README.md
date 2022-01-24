@@ -1,15 +1,24 @@
 ## Overview
-The Warp firmware is intended to be a demonstration and meassurement environment for testing the Warp hardware. 
+This version of the Warp firmware runs with the FRDM KL03 development board; the 96x64 OLED with SSD1331 driver and the MAXREFDES117 heart rate module with MAX30102. 
 
-It provides facilities that we use to perform tests on the hardware such as activating the different programmable voltage regulator output voltages (16 different supply voltage levels),
-activating the programmable I2C pull-ups to different values (65536 different settings), changing the I2C and SPI bit rate, changing the Cortex-M0 clock frequency,
-and so on. Having a menu interface allows us to perform various experiments without having to re-compile and load firmware to the system for each experiment.
+warp-kl03-ksdk1.1-boot.c runs an algorithm to output the user's blood oxygen (SpO2) level and heart rate in bpm on the OLED display.
 
-The Warp firmware is a tool for experimentation. You can also use it as a baseline for building real applications by modifying it to remove the menu-driven functionality and linking in only the sensor drivers you need.
+## Wiring
+In order for the firmware to run as intended, connect your components to the FRDM KL03 as follows:
 
-The core of the firmware is in `warp-kl03-ksdk1.1-boot.c`. The drivers for the individual sensors are in `devXXX.c` for sensor `XXX`. For example,
-`devADXL362.c` for the ADXL362 3-axis accelerometer. The section below briefly describes all the source files in this directory. 
+J2.2  - SSD1331 OC
+J2.3  - MAXREFDES117 INT
+J2.6  - SSD1331 R
+J2.9  - MAXREFDES117 SDA
+J2.10 - MAXREFDES117 SCL
 
+J3.4  - MAXREFDES117 Vin
+J3.5  - SSD1331 +
+J3.7  - MAXREFDES117, SSD1331 GND
+
+J4.1  - SSD1331 CK
+J4.2  - SSD1331 SI
+J4.3  - SSD1331 DC
 
 ## Source File Descriptions
 
