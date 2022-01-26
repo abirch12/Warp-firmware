@@ -1,30 +1,38 @@
 ## Overview
 This version of the Warp firmware runs with the FRDM KL03 development board; the 96x64 OLED with SSD1331 driver and the MAXREFDES117 heart rate module with MAX30102. 
-
-warp-kl03-ksdk1.1-boot.c runs an algorithm to output the user's blood oxygen (SpO2) level and heart rate in bpm on the OLED display.
+`boot.c` runs an algorithm to output the user's blood oxygen (SpO2) level and heart rate in bpm on the OLED display.
 
 ## Wiring
 In order for the firmware to run as intended, connect your components to the FRDM KL03 as follows:
 
 J2.2  - SSD1331 OC
+
 J2.3  - MAXREFDES117 INT
+
 J2.6  - SSD1331 R
+
 J2.9  - MAXREFDES117 SDA
+
 J2.10 - MAXREFDES117 SCL
 
+
 J3.4  - MAXREFDES117 Vin
+
 J3.5  - SSD1331 +
+
 J3.7  - MAXREFDES117, SSD1331 GND
 
+
 J4.1  - SSD1331 CK
+
 J4.2  - SSD1331 SI
+
 J4.3  - SSD1331 DC
 
 ## Source File Descriptions
 
 ##### `CMakeLists.txt`
 This is the CMake configuration file. Edit this to change the default size of the stack and heap.
-
 
 ##### `SEGGER_RTT.*`
 This is the implementation of the SEGGER Real-Time Terminal interface. Do not modify.
@@ -35,62 +43,14 @@ Configuration file for SEGGER Real-Time Terminal interface. You can increase the
 ##### `SEGGER_RTT_printf.c`
 Implementation of the SEGGER Real-Time Terminal interface formatted I/O routines. Do not modify.
 
-##### `devADXL362.*`
-Driver for Analog devices ADXL362.
+##### `devMAXREFDES117.*`
+Driver for MAXREFDES117 (SpO2 and Heart Rate Monitor). Contains functions to read/write to the sensor registers, read from its FIFO, configure it, initialise it and check its interrupt flag via a GPIO input pin.  
 
-##### `devAMG8834.*`
-Driver for AMG8834.
+##### `devSSD1331.*`
+Driver for SSD1331 (OLED Driver). It can initialise and write commands to the screen over SPI. Functions have been added to write the characters "S, p, H, R, -, 0-9" so that the SpO2 and heart rate can be output.
 
-##### `devAS7262.*`
-Driver for AS7262.
-
-##### `devAS7263.*`
-Driver for AS7263.
-
-##### `devAS726x.h`
-Header file with definitions used by both `devAS7262.*` and `devAS7263.*`.
-
-##### `devBME680.*`
-Driver for BME680.
-
-##### `devBMX055.*`
-Driver for BMX055.
-
-##### `devCCS811.*`
-Driver for CCS811.
-
-##### `devHDC1000.*`
-Driver forHDC1000 .
-
-##### `devIS25WP128.*`
-Driver for IS25WP128.
-
-##### `devISL23415.*`
-Driver for ISL23415.
-
-##### `devL3GD20H.*`
-Driver for L3GD20H.
-
-##### `devLPS25H.*`
-Driver for LPS25H.
-
-##### `devMAG3110.*`
-Driver for MAG3110.
-
-##### `devMMA8451Q.*`
-Driver for MMA8451Q.
-
-##### `devPAN1326.*`
-Driver for PAN1326.
-
-##### `devSI4705.*`
-Driver for SI4705.
-
-##### `devSI7021.*`
-Driver for SI7021.
-
-##### `devTCS34725.*`
-Driver for TCS34725.
+##### `algorithm.*`
+This file contains all the algorithms which find the heart rate and SpO2 from the raw data from the MAXREFDES117 FIFO. This involves peak finding and sorting for the heart rate, then looking at the ratio between AC and DC components of the two wavelengths for SpO2. 
 
 ##### `gpio_pins.c`
 Definition of I/O pin configurations using the KSDK `gpio_output_pin_user_config_t` structure.
@@ -101,23 +61,8 @@ Definition of I/O pin mappings and aliases for different I/O pins to symbolic na
 ##### `startup_MKL03Z4.S`
 Initialization assembler.
 
-##### `warp-kl03-ksdk1.1-boot.c`
-The core of the implementation. This puts together the processor initialization with a menu interface that triggers the individual sensor drivers based on commands entered at the menu.
-You can modify `warp-kl03-ksdk1.1-boot.c` to achieve a custom firmware implementation using the following steps:
-
-1.  Remove the definitions for all the `WarpI2CDeviceState` and `WarpSPIDeviceState` structures for the sensors you are not using.
-
-2.  Remove the function `repeatRegisterReadForDeviceAndAddress()` since that references all the sensors in the full Warp platform.
-
-3.  Remove `activateAllLowPowerSensorModes()` and `powerupAllSensors()` since those assume they have access to all the sensors on the Warp platform.
-
-4.  Modify `main()` to replace the menu (see the `while (1)` [loop](https://github.com/physical-computation/Warp-firmware/blob/ea3fac66e0cd85546b71134538f8d8f6ce1741f3/src/boot/ksdk1.1.0/warp-kl03-ksdk1.1-boot.c#L1107)) with the specific operations you want the hardware to perform after initialization.
-
-You can inspect the baseline firmware to see what functions are called when you enter commands at the menu. You can then use the underlying functionality that is already implemented to implement your own custom tasks.
-
-
-##### `warp-kl03-ksdk1.1-powermodes.c`
-Implements functionality related to enabling the different low-power modes of the KL03.
+##### `boot.c`
+The core of the implementation. The main loop of this file brings together functions in the device drivers and `algorithm.c` to run the program which outputs the user's heart rate and SpO2. 
 
 ##### `warp.h`
 Constant and data structure definitions.
