@@ -1,4 +1,4 @@
-## Overview
+## Overview - Alice Birch adb82, Pembroke College
 This version of the Warp firmware runs with the FRDM KL03 development board; the 96x64 OLED with SSD1331 driver and the MAXREFDES117 heart rate module with MAX30102. 
 `boot.c` runs an algorithm to output the user's blood oxygen (SpO2) level and heart rate in bpm on the OLED display.
 
@@ -29,9 +29,28 @@ J4.2  - SSD1331 SI
 
 J4.3  - SSD1331 DC
 
+## Changed Files
+The following files were changed for this project: 
+
+`CMakeLists-Warp.txt`
+
+`devMAXREFDES117.*`
+
+`devSSD1331.*`
+
+`algorithm.*`
+
+`config.h`
+
+`gpio_pins.*`
+
+`warp.h`
+
+`boot.c`
+
 ## Source File Descriptions
 
-##### `CMakeLists.txt`
+##### `CMakeLists-Warp.txt`
 This is the CMake configuration file. Edit this to change the default size of the stack and heap.
 
 ##### `SEGGER_RTT.*`
